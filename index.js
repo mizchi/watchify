@@ -3,6 +3,7 @@ var path = require('path');
 var chokidar = require('chokidar');
 var xtend = require('xtend');
 var anymatch = require('anymatch');
+var fs = require("fs");
 
 module.exports = watchify;
 module.exports.args = {
@@ -47,27 +48,54 @@ function watchify (b, opts) {
             next();
         }));
     }
-    
+
     b.on('file', function (file) {
         watchFile(file);
     });
-    
+
     b.on('package', function (pkg) {
         var file = path.join(pkg.__dirname, 'package.json');
         watchFile(file);
         if (pkgcache) pkgcache[file] = pkg;
     });
-    
+
     b.on('reset', reset);
     reset();
-    
+
+    var outputBuildStatusFile = path.join(process.cwd(), '.watchify-build-status');
+    function initBuildStatus () {
+      if (!fs.existsSync(outputBuildStatusFile)) {
+        fs.writeFileSync(outputBuildStatusFile, "{}");
+      }
+    }
+
+    function readBuildStatus() {
+      return JSON.parse(fs.readFileSync(outputBuildStatusFile).toString());
+    }
+
+    function startBuildStatus () {
+      initBuildStatus();
+      var status = readBuildStatus();
+      status[path.join(process.cwd(), opts.o)] = false;
+      fs.writeFileSync(outputBuildStatusFile, JSON.stringify(status));
+    }
+
+    function finishBuildStatus () {
+      var status = readBuildStatus();
+      status[path.join(process.cwd(), opts.o)] = true;
+      fs.writeFileSync(outputBuildStatusFile, JSON.stringify(status));
+    }
+
     function reset () {
         var time = null;
         var bytes = 0;
         b.pipeline.get('record').on('end', function () {
+            if (opts.outputBuildStatus) {
+              startBuildStatus();
+            }
             time = Date.now();
         });
-        
+
         b.pipeline.get('wrap').push(through(write, end));
         function write (buf, enc, next) {
             bytes += buf.length;
@@ -82,6 +110,10 @@ function watchify (b, opts) {
                 + (delta / 1000).toFixed(2) + ' seconds)'
             );
             this.push(null);
+
+            if (opts.outputBuildStatus) {
+              finishBuildStatus();
+            }
         }
     }
     

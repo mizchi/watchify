@@ -61,6 +61,11 @@ Standard Options:
   --version
 
     Show the watchify and browserify versions with their module paths.
+
+  --output-build-status, --bs       [default: false]
+
+    Save build status to `.watchify-build-status`
+
 ```
 
 ```

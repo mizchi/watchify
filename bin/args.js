@@ -12,5 +12,10 @@ module.exports = function (args) {
         opts.ignoreWatch = ignoreWatch;
     }
 
+    var outputBuildStatus = defined(b.argv['output-build-status'], b.argv.bs);
+    if (outputBuildStatus) {
+        opts.outputBuildStatus = outputBuildStatus;
+    }
+
     return watchify(b, xtend(opts, b.argv));
 };
